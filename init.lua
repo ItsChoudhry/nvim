@@ -944,9 +944,11 @@ require('lazy').setup({
   },
   {
     'windwp/nvim-ts-autotag',
-    enable = true,
-    enable_rename = true,
-    enable_close = true,
+    lazy = false,
+    dependencies = 'nvim-treesitter/nvim-treesitter',
+    config = function()
+      require('nvim-ts-autotag').setup()
+    end,
   },
 }, {
   ui = {
