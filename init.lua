@@ -462,10 +462,6 @@ require('lazy').setup({
           --  For example, in C this would take you to the header.
           map('gD', vim.lsp.buf.declaration, '[G]oto [D]eclaration')
 
-          vim.keymap.set('i', '<C-h>', function()
-            vim.lsp.buf.signature_help()
-          end, opts)
-
           -- The following two autocommands are used to highlight references of the
           -- word under your cursor when your cursor rests there for a little while.
           --    See `:help CursorHold` for information about when this is executed
@@ -881,6 +877,7 @@ require('lazy').setup({
     },
     opts = {
       filesystem = {
+        visible = true,
         window = {
           mappings = {
             ['\\'] = 'close_window',
