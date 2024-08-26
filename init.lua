@@ -526,6 +526,7 @@ require('lazy').setup({
         pyright = {},
         rust_analyzer = {},
         emmet_language_server = {},
+        cssls = {},
         tsserver = {},
         htmx = {},
         zls = {},
