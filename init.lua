@@ -955,7 +955,17 @@ require('lazy').setup({
   {
     'uga-rosa/ccc.nvim',
     config = function()
-      require('ccc').setup()
+      require('ccc').setup {
+        lsp = true,
+        highlighter = {
+          auto_enable = true,
+          lsp = true,
+        },
+        recognize = {
+          input = true,
+          output = true,
+        },
+      }
       vim.keymap.set('n', '<leader>hex', vim.cmd.CccPick)
     end,
   },
