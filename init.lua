@@ -527,7 +527,18 @@ require('lazy').setup({
         clangd = {},
         cmake = {},
         gopls = {},
-        pyright = {},
+        pyright = {
+          settings = {
+            pyright = {
+              plugins = {
+                pycodestyle = {
+                  ignore = { 'E501' },
+                  maxLineLength = 120,
+                },
+              },
+            },
+          },
+        },
         rust_analyzer = {},
         emmet_language_server = {},
         cssls = {},
@@ -607,6 +618,14 @@ require('lazy').setup({
       },
     },
     opts = {
+      formatters = {
+        prettierd = {
+          prepend_args = {
+            '--tabWidth=4',
+            '--useTabs=false',
+          },
+        },
+      },
       notify_on_error = false,
       format_on_save = function(bufnr)
         -- Disable "format_on_save lsp_fallback" for languages that don't
@@ -639,7 +658,6 @@ require('lazy').setup({
       },
     },
   },
-
   { -- Autocompletion
     'hrsh7th/nvim-cmp',
     event = 'InsertEnter',
@@ -764,8 +782,8 @@ require('lazy').setup({
       -- any other, such as 'tokyonight-storm', 'tokyonight-moon', or 'tokyonight-day'.
       vim.cmd.colorscheme 'kanagawa-dragon'
 
-      -- You can configure highlights by doing something like:
-      vim.cmd.hi 'Comment gui=none'
+      vim.api.nvim_set_hl(0, 'Normal', { bg = 'none' })
+      vim.api.nvim_set_hl(0, 'NormalFloat', { bg = 'none' })
     end,
   },
 
