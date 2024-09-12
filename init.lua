@@ -950,19 +950,6 @@ require('lazy').setup({
     end,
   },
   {
-    'iamcco/markdown-preview.nvim',
-    config = function()
-      vim.keymap.set('n', '<leader>mpt', vim.cmd.MarkdownPreviewToggle)
-    end,
-    run = 'cd app && npm install',
-    setup = function()
-      vim.g.mkdp_filetypes = {
-        'markdown',
-      }
-    end,
-    ft = { 'markdown' },
-  },
-  {
     'windwp/nvim-ts-autotag',
     lazy = false,
     dependencies = 'nvim-treesitter/nvim-treesitter',
