@@ -542,7 +542,7 @@ require('lazy').setup({
         rust_analyzer = {},
         emmet_language_server = {},
         cssls = {},
-        tsserver = {},
+        ts_ls = {},
         htmx = {},
         zls = {},
         tailwindcss = {},
