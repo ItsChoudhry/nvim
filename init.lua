@@ -526,7 +526,6 @@ require('lazy').setup({
       local servers = {
         clangd = {},
         cmake = {},
-        gopls = {},
         pyright = {
           settings = {
             pyright = {
