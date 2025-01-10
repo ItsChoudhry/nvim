@@ -50,8 +50,8 @@ vim.opt.splitbelow = true
 -- Sets how neovim will display certain whitespace characters in the editor.
 --  See `:help 'list'`
 --  and `:help 'listchars'`
-vim.opt.list = true
-vim.opt.listchars = { tab = '» ', trail = '·', nbsp = '␣' }
+-- vim.opt.list = true
+-- vim.opt.listchars = { tab = '» ', trail = '·', nbsp = '␣' }
 
 -- Preview substitutions live, as you type!
 vim.opt.inccommand = 'split'
@@ -526,24 +526,13 @@ require('lazy').setup({
       local servers = {
         clangd = {},
         cmake = {},
-        pyright = {
-          settings = {
-            pyright = {
-              plugins = {
-                pycodestyle = {
-                  ignore = { 'E501' },
-                  maxLineLength = 120,
-                },
-              },
-            },
-          },
-        },
+        ruff = {},
+        basedpyright = {},
         rust_analyzer = {},
         emmet_language_server = {},
         cssls = {},
         ts_ls = {},
         htmx = {},
-        zls = {},
         tailwindcss = {},
         eslint = {},
         lua_ls = {
@@ -638,7 +627,7 @@ require('lazy').setup({
       end,
       formatters_by_ft = {
         lua = { 'stylua' },
-        python = { 'isort', 'ruff' },
+        python = { 'ruff_fix', 'ruff_format' },
         javascriptreact = { 'prettierd' },
         typescript = { 'prettierd' },
         typescriptreact = { 'prettierd' },
@@ -833,6 +822,7 @@ require('lazy').setup({
     -- [[ Configure Treesitter ]] See `:help nvim-treesitter`
     opts = {
       ensure_installed = {
+        'python',
         'bash',
         'zig',
         'cpp',
@@ -980,6 +970,39 @@ require('lazy').setup({
     version = false, -- set this if you want to always pull the latest change
     opts = {
       -- add any opts here
+      -- model = 'hf.co/bartowski/Qwen2.5-Coder-32B-Instruct-GGUF:Q5_K_S',
+      provider = 'ollama',
+      vendors = {
+        ollama = {
+          api_key_name = '',
+          endpoint = 'http://127.0.0.1:11434/v1',
+          model = 'hf.co/bartowski/Qwen2.5-Coder-32B-Instruct-GGUF:Q5_K_S',
+
+          ---@type fun(opts: AvanteProvider, code_opts: AvantePromptOptions): AvanteCurlOutput
+          parse_curl_args = function(opts, code_opts)
+            code_opts.messages[#code_opts.messages - 1].content = code_opts.messages[#code_opts.messages].content
+              .. code_opts.messages[#code_opts.messages - 1].content
+            code_opts.messages[#code_opts.messages] = nil
+            return {
+              url = opts.endpoint .. '/chat/completions',
+              headers = {
+                ['Content-Type'] = 'application/json',
+              },
+              body = {
+                model = opts.model,
+                messages = require('avante.providers').copilot.parse_messages(code_opts),
+                num_ctx = 4096,
+                max_tokens = 4096,
+                stream = true,
+              },
+            }
+          end,
+          ---@type fun(data_stream: string, event_state: string, opts: ResponseParser): nil
+          parse_response_data = function(data_stream, event_state, opts)
+            require('avante.providers').openai.parse_response(data_stream, event_state, opts)
+          end,
+        },
+      },
     },
     -- if you want to build from source then do `make BUILD_FROM_SOURCE=true`
     build = 'make',
@@ -1009,15 +1032,15 @@ require('lazy').setup({
           },
         },
       },
-      {
-        -- Make sure to set this up properly if you have lazy=true
-        'MeanderingProgrammer/render-markdown.nvim',
-        opts = {
-          file_types = { 'markdown', 'Avante' },
-        },
-        ft = { 'markdown', 'Avante' },
-      },
     },
+  },
+  {
+    -- Make sure to set this up properly if you have lazy=true
+    'MeanderingProgrammer/render-markdown.nvim',
+    opts = {
+      file_types = { 'markdown', 'Avante' },
+    },
+    ft = { 'markdown', 'Avante' },
   },
 }, {
   ui = {
