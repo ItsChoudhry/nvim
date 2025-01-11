@@ -974,30 +974,21 @@ require('lazy').setup({
       provider = 'ollama',
       vendors = {
         ollama = {
-          api_key_name = '',
-          endpoint = 'http://127.0.0.1:11434/v1',
           model = 'hf.co/bartowski/Qwen2.5-Coder-32B-Instruct-GGUF:Q5_K_S',
-
-          ---@type fun(opts: AvanteProvider, code_opts: AvantePromptOptions): AvanteCurlOutput
           parse_curl_args = function(opts, code_opts)
-            code_opts.messages[#code_opts.messages - 1].content = code_opts.messages[#code_opts.messages].content
-              .. code_opts.messages[#code_opts.messages - 1].content
-            code_opts.messages[#code_opts.messages] = nil
+            local messages = require('avante.providers').openai.parse_messages(code_opts)
             return {
-              url = opts.endpoint .. '/chat/completions',
+              url = 'http://127.0.0.1:11434/v1/chat/completions',
               headers = {
                 ['Content-Type'] = 'application/json',
               },
               body = {
                 model = opts.model,
-                messages = require('avante.providers').copilot.parse_messages(code_opts),
-                num_ctx = 4096,
-                max_tokens = 4096,
+                messages = messages,
                 stream = true,
               },
             }
           end,
-          ---@type fun(data_stream: string, event_state: string, opts: ResponseParser): nil
           parse_response_data = function(data_stream, event_state, opts)
             require('avante.providers').openai.parse_response(data_stream, event_state, opts)
           end,
@@ -1063,6 +1054,3 @@ require('lazy').setup({
     },
   },
 })
-
--- The line beneath this is called `modeline`. See `:help modeline`
--- vim: ts=2 sts=2 sw=2 et
