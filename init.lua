@@ -888,7 +888,7 @@ require('lazy').setup({
           api_key_name = '',
           ask = '',
           endpoint = 'http://127.0.0.1:11434/api',
-          model = 'hf.co/bartowski/DeepSeek-R1-Distill-Qwen-14B-GGUF:Q8_0',
+          model = 'hf.co/bartowski/DeepSeek-R1-Distill-Qwen-32B-GGUF:Q5_K_S',
           -- model = 'hf.co/bartowski/Qwen2.5-Coder-32B-Instruct-GGUF:Q5_K_S',
           parse_curl_args = function(opts, code_opts)
             return {
