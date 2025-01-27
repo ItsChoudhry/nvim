@@ -171,86 +171,6 @@ require('lazy').setup({
       },
     },
   },
-
-  -- NOTE: Plugins can also be configured to run Lua code when they are loaded.
-  --
-  -- This is often very useful to both group configuration, as well as handle
-  -- lazy loading plugins that don't need to be loaded immediately at startup.
-  --
-  -- For example, in the following configuration, we use:
-  --  event = 'VimEnter'
-  --
-  -- which loads which-key before all the UI elements are loaded. Events can be
-  -- normal autocommands events (`:help autocmd-events`).
-  --
-  -- Then, because we use the `config` key, the configuration only runs
-  -- after the plugin has been loaded:
-  --  config = function() ... end
-
-  { -- Useful plugin to show you pending keybinds.
-    'folke/which-key.nvim',
-    enabled = false,
-    event = 'VimEnter', -- Sets the loading event to 'VimEnter'
-    config = function() -- This is the function that runs, AFTER loading
-      require('which-key').setup {
-        icons = {
-          -- set icon mappings to true if you have a Nerd Font
-          mappings = vim.g.have_nerd_font,
-          -- If you are using a Nerd Font: set icons.keys to an empty table which will use the
-          -- default whick-key.nvim defined Nerd Font icons, otherwise define a string table
-          keys = vim.g.have_nerd_font and {} or {
-            Up = '<Up> ',
-            Down = '<Down> ',
-            Left = '<Left> ',
-            Right = '<Right> ',
-            C = '<C-…> ',
-            M = '<M-…> ',
-            D = '<D-…> ',
-            S = '<S-…> ',
-            CR = '<CR> ',
-            Esc = '<Esc> ',
-            ScrollWheelDown = '<ScrollWheelDown> ',
-            ScrollWheelUp = '<ScrollWheelUp> ',
-            NL = '<NL> ',
-            BS = '<BS> ',
-            Space = '<Space> ',
-            Tab = '<Tab> ',
-            F1 = '<F1>',
-            F2 = '<F2>',
-            F3 = '<F3>',
-            F4 = '<F4>',
-            F5 = '<F5>',
-            F6 = '<F6>',
-            F7 = '<F7>',
-            F8 = '<F8>',
-            F9 = '<F9>',
-            F10 = '<F10>',
-            F11 = '<F11>',
-            F12 = '<F12>',
-          },
-        },
-      }
-
-      -- Document existing key chains
-      require('which-key').add {
-        { '<leader>c', group = '[C]ode', mode = { 'n', 'x' } },
-        { '<leader>d', group = '[D]ocument' },
-        { '<leader>r', group = '[R]ename' },
-        { '<leader>s', group = '[S]earch' },
-        { '<leader>w', group = '[W]orkspace' },
-        { '<leader>t', group = '[T]oggle' },
-        { '<leader>h', group = 'Git [H]unk', mode = { 'n', 'v' } },
-      }
-    end,
-  },
-
-  -- NOTE: Plugins can specify dependencies.
-  --
-  -- The dependencies are proper plugin specifications as well - anything
-  -- you do for a plugin at the top level, you can do for a dependency.
-  --
-  -- Use the `dependencies` key to specify the dependencies of a particular plugin
-
   { -- Fuzzy Finder (files, lsp, etc)
     'nvim-telescope/telescope.nvim',
     event = 'VimEnter',
@@ -590,7 +510,6 @@ require('lazy').setup({
       }
     end,
   },
-
   { -- Autoformat
     'stevearc/conform.nvim',
     event = { 'BufWritePre' },
@@ -756,7 +675,6 @@ require('lazy').setup({
       }
     end,
   },
-
   { -- You can easily change to a different colorscheme.
     -- Change the name of the colorscheme plugin below, and then
     -- change the command in the config to whatever the name of that colorscheme is.
@@ -867,7 +785,6 @@ require('lazy').setup({
       --    - Treesitter + textobjects: https://github.com/nvim-treesitter/nvim-treesitter-textobjects
     end,
   },
-
   {
     'windwp/nvim-autopairs',
     event = 'InsertEnter',
@@ -901,13 +818,6 @@ require('lazy').setup({
       },
     },
   },
-  -- require 'kickstart.plugins.gitsigns', -- adds gitsigns recommend keymaps
-
-  -- NOTE: The import below can automatically add your own plugins, configuration, etc from `lulua/custom/pluginsa/custom/plugins/*.lua`
-  --    This is the easiest way to modularize your config.
-  --
-  --  Uncomment the following line and add your plugins to `lua/custom/plugins/*.lua` to get going.
-  --    For additional information, see `:help lazy.nvim-lazy.nvim-structuring-your-plugins`
   { import = 'custom.plugins' },
   {
     'nvim-tree/nvim-web-devicons',
@@ -973,24 +883,40 @@ require('lazy').setup({
       -- model = 'hf.co/bartowski/Qwen2.5-Coder-32B-Instruct-GGUF:Q5_K_S',
       provider = 'ollama',
       vendors = {
+        ---@type AvanteProvider
         ollama = {
-          model = 'hf.co/bartowski/Qwen2.5-Coder-32B-Instruct-GGUF:Q5_K_S',
+          api_key_name = '',
+          ask = '',
+          endpoint = 'http://127.0.0.1:11434/api',
+          model = 'hf.co/bartowski/DeepSeek-R1-Distill-Qwen-14B-GGUF:Q8_0',
+          -- model = 'hf.co/bartowski/Qwen2.5-Coder-32B-Instruct-GGUF:Q5_K_S',
           parse_curl_args = function(opts, code_opts)
-            local messages = require('avante.providers').openai.parse_messages(code_opts)
             return {
-              url = 'http://127.0.0.1:11434/v1/chat/completions',
+              url = opts.endpoint .. '/chat',
               headers = {
+                ['Accept'] = 'application/json',
                 ['Content-Type'] = 'application/json',
               },
               body = {
                 model = opts.model,
-                messages = messages,
+                -- options = {
+                --   num_ctx = 32768,
+                -- },
+                messages = require('avante.providers').copilot.parse_messages(code_opts), -- you can make your own message, but this is very advanced
                 stream = true,
               },
             }
           end,
-          parse_response_data = function(data_stream, event_state, opts)
-            require('avante.providers').openai.parse_response(data_stream, event_state, opts)
+          parse_stream_data = function(data, handler_opts)
+            -- Parse the JSON data
+            local json_data = vim.fn.json_decode(data)
+            -- Check if the response contains a message
+            if json_data and json_data.message and json_data.message.content then
+              -- Extract the content from the message
+              local content = json_data.message.content
+              -- Call the handler with the content
+              handler_opts.on_chunk(content)
+            end
           end,
         },
       },
