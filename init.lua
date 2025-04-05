@@ -71,10 +71,21 @@ vim.keymap.set('n', '<Esc>', '<cmd>nohlsearch<CR>')
 
 -- Diagnostic keymaps
 
+vim.diagnostic.config { virtual_text = true }
+local function toggle_vt()
+  local curr = vim.diagnostic.config().virtual_text
+  if curr then
+    vim.diagnostic.config { virtual_text = false }
+  else
+    vim.diagnostic.config { virtual_text = true }
+  end
+end
+
 vim.keymap.set('n', '[d', vim.diagnostic.goto_prev, { desc = 'Go to previous [D]iagnostic message' })
 vim.keymap.set('n', ']d', vim.diagnostic.goto_next, { desc = 'Go to next [D]iagnostic message' })
 vim.keymap.set('n', '<leader>e', vim.diagnostic.open_float, { desc = 'Show diagnostic [E]rror messages' })
 vim.keymap.set('n', '<leader>q', vim.diagnostic.setloclist, { desc = 'Open diagnostic [Q]uickfix list' })
+vim.keymap.set('n', '<leader>vt', toggle_vt, { desc = 'toggle virtual text' })
 
 -- Exit terminal mode in the builtin terminal with a shortcut that is a bit easier
 -- for people to discover. Otherwise, you normally need to press <C-\><C-n>, which
@@ -443,11 +454,51 @@ require('lazy').setup({
       --  - capabilities (table): Override fields in capabilities. Can be used to disable certain LSP features.
       --  - settings (table): Override the default settings passed when initializing the server.
       --        For example, to see the options for `lua_ls`, you could go to: https://luals.github.io/wiki/settings/
+      local venv_path = os.getenv 'VIRTUAL_ENV'
+      local py_path = nil
+      -- decide which python executable to use for mypy
+      if venv_path ~= nil then
+        py_path = venv_path .. '/bin/python3'
+      else
+        py_path = vim.g.python3_host_prog
+      end
       local servers = {
         clangd = {},
         cmake = {},
-        ruff = {},
+        ruff = {
+          init_options = {
+            settings = {
+              lint = {
+                enable = true,
+              },
+              lineLength = 120,
+            },
+          },
+        },
         basedpyright = {},
+        pylsp = {
+          settings = {
+            pylsp = {
+              plugins = {
+                maccabe = { enabled = true },
+                pyflakes = { enabled = true },
+                autopep8 = { enabled = false },
+                yapf = { enabled = false },
+                pycodestyle = {
+                  enabled = true,
+                  ingore = { 'W503' },
+                  maxLineLength = 120,
+                },
+                pylsp_mypy = {
+                  enabled = true,
+                  overrides = { '--python-executable', py_path, true },
+                  report_progress = true,
+                  live_mode = false,
+                },
+              },
+            },
+          },
+        },
         rust_analyzer = {},
         emmet_language_server = {},
         cssls = {},
@@ -546,7 +597,6 @@ require('lazy').setup({
       end,
       formatters_by_ft = {
         lua = { 'stylua' },
-        python = { 'ruff_fix', 'ruff_format' },
         javascriptreact = { 'prettierd' },
         typescript = { 'prettierd' },
         typescriptreact = { 'prettierd' },
@@ -856,101 +906,85 @@ require('lazy').setup({
       require('nvim-ts-autotag').setup()
     end,
   },
-  {
-    'uga-rosa/ccc.nvim',
-    config = function()
-      require('ccc').setup {
-        lsp = true,
-        highlighter = {
-          auto_enable = true,
-          lsp = true,
-        },
-        recognize = {
-          input = true,
-          output = true,
-        },
-      }
-      vim.keymap.set('n', '<leader>hex', vim.cmd.CccPick)
-    end,
-  },
-  {
-    'yetone/avante.nvim',
-    event = 'VeryLazy',
-    lazy = false,
-    version = false, -- set this if you want to always pull the latest change
-    opts = {
-      -- add any opts here
-      -- model = 'hf.co/bartowski/Qwen2.5-Coder-32B-Instruct-GGUF:Q5_K_S',
-      provider = 'ollama',
-      vendors = {
-        ---@type AvanteProvider
-        ollama = {
-          api_key_name = '',
-          ask = '',
-          endpoint = 'http://127.0.0.1:11434/api',
-          model = 'hf.co/bartowski/DeepSeek-R1-Distill-Qwen-32B-GGUF:Q5_K_S',
-          -- model = 'hf.co/bartowski/Qwen2.5-Coder-32B-Instruct-GGUF:Q5_K_S',
-          parse_curl_args = function(opts, code_opts)
-            return {
-              url = opts.endpoint .. '/chat',
-              headers = {
-                ['Accept'] = 'application/json',
-                ['Content-Type'] = 'application/json',
-              },
-              body = {
-                model = opts.model,
-                -- options = {
-                --   num_ctx = 32768,
-                -- },
-                messages = require('avante.providers').copilot.parse_messages(code_opts), -- you can make your own message, but this is very advanced
-                stream = true,
-              },
-            }
-          end,
-          parse_stream_data = function(data, handler_opts)
-            -- Parse the JSON data
-            local json_data = vim.fn.json_decode(data)
-            -- Check if the response contains a message
-            if json_data and json_data.message and json_data.message.content then
-              -- Extract the content from the message
-              local content = json_data.message.content
-              -- Call the handler with the content
-              handler_opts.on_chunk(content)
-            end
-          end,
-        },
-      },
-    },
-    -- if you want to build from source then do `make BUILD_FROM_SOURCE=true`
-    build = 'make',
-    -- build = "powershell -ExecutionPolicy Bypass -File Build.ps1 -BuildFromSource false" -- for windows
-    dependencies = {
-      'nvim-treesitter/nvim-treesitter',
-      'stevearc/dressing.nvim',
-      'nvim-lua/plenary.nvim',
-      'MunifTanjim/nui.nvim',
-      --- The below dependencies are optional,
-      'nvim-tree/nvim-web-devicons', -- or echasnovski/mini.icons
-      'zbirenbaum/copilot.lua', -- for providers='copilot'
-      {
-        -- support for image pasting
-        'HakonHarnes/img-clip.nvim',
-        event = 'VeryLazy',
-        opts = {
-          -- recommended settings
-          default = {
-            embed_image_as_base64 = false,
-            prompt_for_file_name = false,
-            drag_and_drop = {
-              insert_mode = true,
-            },
-            -- required for Windows users
-            use_absolute_path = true,
-          },
-        },
-      },
-    },
-  },
+
+  -- {
+  --   'yetone/avante.nvim',
+  --   event = 'VeryLazy',
+  --   lazy = false,
+  --   version = false, -- set this if you want to always pull the latest change
+  --   opts = {
+  --     -- add any opts here
+  --     -- model = 'hf.co/bartowski/Qwen2.5-Coder-32B-Instruct-GGUF:Q5_K_S',
+  --     provider = 'ollama',
+  --     vendors = {
+  --       ---@type AvanteProvider
+  --       ollama = {
+  --         api_key_name = '',
+  --         ask = '',
+  --         endpoint = 'http://127.0.0.1:11434/api',
+  --         model = 'hf.co/bartowski/DeepSeek-R1-Distill-Qwen-32B-GGUF:Q5_K_S',
+  --         -- model = 'hf.co/bartowski/Qwen2.5-Coder-32B-Instruct-GGUF:Q5_K_S',
+  --         parse_curl_args = function(opts, code_opts)
+  --           return {
+  --             url = opts.endpoint .. '/chat',
+  --             headers = {
+  --               ['Accept'] = 'application/json',
+  --               ['Content-Type'] = 'application/json',
+  --             },
+  --             body = {
+  --               model = opts.model,
+  --               -- options = {
+  --               --   num_ctx = 32768,
+  --               -- },
+  --               messages = require('avante.providers').copilot.parse_messages(code_opts), -- you can make your own message, but this is very advanced
+  --               stream = true,
+  --             },
+  --           }
+  --         end,
+  --         parse_stream_data = function(data, handler_opts)
+  --           -- Parse the JSON data
+  --           local json_data = vim.fn.json_decode(data)
+  --           -- Check if the response contains a message
+  --           if json_data and json_data.message and json_data.message.content then
+  --             -- Extract the content from the message
+  --             local content = json_data.message.content
+  --             -- Call the handler with the content
+  --             handler_opts.on_chunk(content)
+  --           end
+  --         end,
+  --       },
+  --     },
+  --   },
+  --   -- if you want to build from source then do `make BUILD_FROM_SOURCE=true`
+  --   build = 'make',
+  --   -- build = "powershell -ExecutionPolicy Bypass -File Build.ps1 -BuildFromSource false" -- for windows
+  --   dependencies = {
+  --     'nvim-treesitter/nvim-treesitter',
+  --     'stevearc/dressing.nvim',
+  --     'nvim-lua/plenary.nvim',
+  --     'MunifTanjim/nui.nvim',
+  --     --- The below dependencies are optional,
+  --     'nvim-tree/nvim-web-devicons', -- or echasnovski/mini.icons
+  --     'zbirenbaum/copilot.lua', -- for providers='copilot'
+  --     {
+  --       -- support for image pasting
+  --       'HakonHarnes/img-clip.nvim',
+  --       event = 'VeryLazy',
+  --       opts = {
+  --         -- recommended settings
+  --         default = {
+  --           embed_image_as_base64 = false,
+  --           prompt_for_file_name = false,
+  --           drag_and_drop = {
+  --             insert_mode = true,
+  --           },
+  --           -- required for Windows users
+  --           use_absolute_path = true,
+  --         },
+  --       },
+  --     },
+  --   },
+  -- },
   {
     -- Make sure to set this up properly if you have lazy=true
     'MeanderingProgrammer/render-markdown.nvim',

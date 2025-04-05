@@ -71,6 +71,7 @@ return {
         enabled = true,
       },
     },
+    'jay-babu/mason-nvim-dap.nvim',
     'mfussenegger/nvim-dap-python',
     'folke/edgy.nvim',
   },
