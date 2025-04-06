@@ -29,27 +29,48 @@ local function define_colors()
   })
 end
 
--- local function setup_default_configurations()
---   local dap = require 'dap'
---   local lldb_configuration = {
---     {
---       name = 'Launch',
---       type = 'codelldb',
---       request = 'launch',
---       program = function()
---         return vim.fn.input('Path to executable: ', vim.fn.getcwd() .. '/', 'file')
---       end,
---       cwd = '${workspaceFolder}',
---       stopOnEntry = false,
---       args = {},
---     },
---   }
---
---   dap.configurations.c = lldb_configuration
---   dap.configurations.cpp = lldb_configuration
---   dap.configurations.rust = lldb_configuration
---   dap.configurations.asm = lldb_configuration
--- end
+local function setup_default_configurations()
+  local dap = require 'dap'
+  local codelldb_configuration = {
+    {
+      name = 'Launch',
+      type = 'codelldb',
+      request = 'launch',
+      program = function()
+        return vim.fn.input('Path to executable: ', vim.fn.getcwd() .. '/', 'file')
+      end,
+      cwd = '${workspaceFolder}',
+      stopOnEntry = false,
+      args = {},
+    },
+  }
+
+  dap.configurations.c = codelldb_configuration
+  dap.configurations.cpp = codelldb_configuration
+  dap.configurations.asm = codelldb_configuration
+
+  require('dap-python').setup 'python3'
+  table.insert(require('dap').configurations.python, {
+    type = 'python',
+    request = 'launch',
+    name = 'module',
+    module = vim.fn.fnamemodify(vim.fn.getcwd(), ':t'),
+  })
+  table.insert(require('dap').configurations.python, {
+    type = 'python',
+    request = 'launch',
+    name = 'module:args',
+    module = vim.fn.fnamemodify(vim.fn.getcwd(), ':t'),
+    args = function()
+      local args_string = vim.fn.input 'Arguments: '
+      local utils = require 'dap.utils'
+      if utils.splitstr and vim.fn.has 'nvim-0.10' == 1 then
+        return utils.splitstr(args_string)
+      end
+      return vim.split(args_string, ' +')
+    end,
+  })
+end
 
 return {
   'mfussenegger/nvim-dap',
@@ -76,28 +97,7 @@ return {
     'folke/edgy.nvim',
   },
   config = function()
-    require('dap-python').setup 'python3'
-    table.insert(require('dap').configurations.python, {
-      type = 'python',
-      request = 'launch',
-      name = 'module',
-      module = vim.fn.fnamemodify(vim.fn.getcwd(), ':t'),
-    })
-    table.insert(require('dap').configurations.python, {
-      type = 'python',
-      request = 'launch',
-      name = 'module:args',
-      module = vim.fn.fnamemodify(vim.fn.getcwd(), ':t'),
-      args = function()
-        local args_string = vim.fn.input 'Arguments: '
-        local utils = require 'dap.utils'
-        if utils.splitstr and vim.fn.has 'nvim-0.10' == 1 then
-          return utils.splitstr(args_string)
-        end
-        return vim.split(args_string, ' +')
-      end,
-    })
-
+    setup_default_configurations()
     local dap = require 'dap'
     local dapui = require 'dapui'
     dapui.setup()
@@ -130,23 +130,13 @@ return {
       dap.terminate()
     end)
 
-    -- dap.adapters.lldb = {
-    --   type = 'executable',
-    --   command = '/Users/neogoose/.local/share/nvim/mason/bin/codelldb',
-    --   name = 'codelldb',
-    -- }
+    dap.adapters.codelldb = {
+      type = 'executable',
+      command = '/home/itschoudhry/.local/share/nvim/mason/bin/codelldb',
+      name = 'codelldb',
+    }
 
     vim.keymap.set('n', '<F5>', function()
-      -- setup_default_configurations()
-      -- -- when debug is called firstly try to read and/or update launch.json configuration
-      -- -- from the local project which will override all the default configurations
-      -- if vim.fn.filereadable '.vscode/launch.json' then
-      --   require('dap.ext.vscode').load_launchjs(nil, { lldb = { 'rust', 'c', 'cpp' } })
-      -- else
-      --   -- If not possible stick to the default prebuilt configurations
-      --   setup_default_configurations()
-      -- end
-
       require('dap').continue()
     end)
   end,

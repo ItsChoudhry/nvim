@@ -499,7 +499,6 @@ require('lazy').setup({
             },
           },
         },
-        rust_analyzer = {},
         emmet_language_server = {},
         cssls = {},
         ts_ls = {},
@@ -547,7 +546,13 @@ require('lazy').setup({
             -- by the server configuration above. Useful when disabling
             -- certain features of an LSP (for example, turning off formatting for tsserver)
             server.capabilities = vim.tbl_deep_extend('force', {}, capabilities, server.capabilities or {})
-            require('lspconfig')[server_name].setup(server)
+            if server_name == 'rust_analyzer' then
+              require('mason-lspconfig').setup_handlers {
+                ['rust_analyzer'] = function() end,
+              }
+            else
+              require('lspconfig')[server_name].setup(server)
+            end
           end,
         },
       }
@@ -559,6 +564,18 @@ require('lazy').setup({
           })
         end,
       }
+    end,
+  },
+  {
+    'mrcjkb/rustaceanvim',
+    version = '^6', -- Recommended
+    lazy = false, -- This plugin is already lazy
+  },
+  {
+    'rust-lang/rust.vim',
+    ft = 'rust',
+    init = function()
+      vim.g.rustfmt_autosave = 1
     end,
   },
   { -- Autoformat
@@ -610,7 +627,6 @@ require('lazy').setup({
         cpp = { 'clang_format' },
         c = { 'clang_format' },
         go = { 'goimports', 'gofmt' },
-        rust = { 'rustfmt', lsp_format = 'fallback' },
         javascript = { 'prettierd', 'prettier', stop_after_first = true },
       },
     },
