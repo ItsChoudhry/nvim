@@ -475,18 +475,21 @@ require('lazy').setup({
             },
           },
         },
-        basedpyright = {},
         pylsp = {
           settings = {
             pylsp = {
               plugins = {
                 maccabe = { enabled = true },
-                pyflakes = { enabled = true },
+                pyflakes = { enabled = false },
+                flake8 = {
+                  enabled = false,
+                  maxLineLength = 120,
+                },
                 autopep8 = { enabled = false },
                 yapf = { enabled = false },
                 pycodestyle = {
                   enabled = true,
-                  ingore = { 'W503' },
+                  ignore = { 'W503', 'E203' },
                   maxLineLength = 120,
                 },
                 pylsp_mypy = {
@@ -502,7 +505,6 @@ require('lazy').setup({
         emmet_language_server = {},
         cssls = {},
         ts_ls = {},
-        htmx = {},
         tailwindcss = {},
         eslint = {},
         lua_ls = {
@@ -594,12 +596,12 @@ require('lazy').setup({
     },
     opts = {
       formatters = {
-        prettierd = {
-          prepend_args = {
-            '--tabWidth=4',
-            '--useTabs=false',
-          },
-        },
+        -- prettierd = {
+        --   prepend_args = {
+        --     '--tabWidth=4',
+        --     '--useTabs=false',
+        --   },
+        -- },
       },
       notify_on_error = false,
       format_on_save = function(bufnr)
