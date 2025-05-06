@@ -746,10 +746,9 @@ require('lazy').setup({
   },
   {
     'rebelot/kanagawa.nvim',
-    lazy = false, -- Load immediately to ensure colorscheme is available
-    priority = 1000, -- High priority to load before other plugins
+    lazy = false,
+    priority = 1000,
     config = function()
-      -- Optional: Configure Kanagawa before setting the colorscheme
       require('kanagawa').setup {
         -- Customize options here (see below for examples)
         theme = 'dragon', -- Options: "wave", "dragon", "lotus"
@@ -759,14 +758,26 @@ require('lazy').setup({
         },
         transparent = true, -- Set to true for transparent background
         terminalColors = true,
+        undercurl = false,
         -- keywordStyle = { italic = false },
         -- statementStyle = { bold = false },
+        overrides = function()
+          return {
+            -- Boolean = { bold = false }, -- Disable bold for true/false
+            -- Operator = { bold = false }, -- Disable bold for operators like and/or/not
+            DiagnosticUnderlineError = { underline = false, undercurl = false },
+            DiagnosticUnderlineWarn = { underline = false, undercurl = false },
+            DiagnosticUnderlineInfo = { underline = false, undercurl = false },
+            DiagnosticUnderlineHint = { underline = false, undercurl = false },
+          }
+        end,
       }
 
       vim.cmd 'colorscheme kanagawa'
+      vim.api.nvim_set_hl(0, 'Normal', { bg = 'none' })
+      vim.api.nvim_set_hl(0, 'NormalFloat', { bg = 'none' })
     end,
   },
-
   -- Highlight todo, notes, etc in comments
   { 'folke/todo-comments.nvim', event = 'VimEnter', dependencies = { 'nvim-lua/plenary.nvim' }, opts = { signs = false } },
 
