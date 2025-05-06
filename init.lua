@@ -759,12 +759,13 @@ require('lazy').setup({
         transparent = true, -- Set to true for transparent background
         terminalColors = true,
         undercurl = false,
-        -- keywordStyle = { italic = false },
-        -- statementStyle = { bold = false },
+        keywordStyle = { italic = false },
+        statementStyle = { bold = false },
         overrides = function()
           return {
             -- Boolean = { bold = false }, -- Disable bold for true/false
             -- Operator = { bold = false }, -- Disable bold for operators like and/or/not
+            ['@variable.builtin'] = { italic = false },
             DiagnosticUnderlineError = { underline = false, undercurl = false },
             DiagnosticUnderlineWarn = { underline = false, undercurl = false },
             DiagnosticUnderlineInfo = { underline = false, undercurl = false },
