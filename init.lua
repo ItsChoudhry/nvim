@@ -303,8 +303,8 @@ require('lazy').setup({
     'neovim/nvim-lspconfig',
     dependencies = {
       -- Automatically install LSPs and related tools to stdpath for Neovim
-      { 'williamboman/mason.nvim', config = true }, -- NOTE: Must be loaded before dependants
-      'williamboman/mason-lspconfig.nvim',
+      { 'mason-org/mason.nvim', opts = {} }, -- NOTE: Must be loaded before dependants
+      'mason-org/mason-lspconfig.nvim',
       'WhoIsSethDaniel/mason-tool-installer.nvim',
 
       -- Useful status updates for LSP.
@@ -438,12 +438,6 @@ require('lazy').setup({
         end,
       })
 
-      -- LSP servers and clients are able to communicate to each other what features they support.
-      --  By default, Neovim doesn't support everything that is in the LSP specification.
-      --  When you add blink.cmp, luasnip, etc. Neovim now has *more* capabilities.
-      --  So, we create new capabilities with blink.cmp, and then broadcast that to the servers.
-      local capabilities = require('blink.cmp').get_lsp_capabilities()
-
       local venv_path = os.getenv 'VIRTUAL_ENV'
       local py_path = nil
       -- decide which python executable to use for mypy
@@ -453,16 +447,26 @@ require('lazy').setup({
         py_path = vim.g.python3_host_prog
       end
 
+      -- LSP servers and clients are able to communicate to each other what features they support.
+      --  By default, Neovim doesn't support everything that is in the LSP specification.
+      --  When you add blink.cmp, luasnip, etc. Neovim now has *more* capabilities.
+      --  So, we create new capabilities with blink.cmp, and then broadcast that to the servers.
+      local capabilities = require('blink.cmp').get_lsp_capabilities()
+
+      vim.lsp.set_log_level 'debug'
+
       local servers = {
         clangd = {},
         cmake = {},
         ruff = {
-          init_options = {
-            settings = {
-              lint = {
-                enable = true,
+          settings = {
+            init_options = {
+              settings = {
+                lint = {
+                  enable = true,
+                },
+                lineLength = 120,
               },
-              lineLength = 120,
             },
           },
         },
@@ -521,54 +525,22 @@ require('lazy').setup({
       }
 
       local ensure_installed = vim.tbl_keys(servers or {})
-      vim.list_extend(ensure_installed, {
-        'stylua', -- Used to format Lua code
-        'prettierd',
-      })
-      require('mason-tool-installer').setup { ensure_installed = ensure_installed }
 
-      -- require('lspconfig').pylsp.setup {
-      --   cmd = { vim.fn.expand '~/.local/share/nvim/mason/packages/python-lsp-server/venv/bin/pylsp' },
-      --   settings = {
-      --     pylsp = {
-      --       plugins = {
-      --         maccabe = { enabled = true },
-      --         pyflakes = { enabled = false },
-      --         flake8 = {
-      --           enabled = false,
-      --           maxLineLength = 120,
-      --         },
-      --         autopep8 = { enabled = false },
-      --         yapf = { enabled = false },
-      --         pycodestyle = {
-      --           enabled = true,
-      --           ignore = { 'W503', 'E203' },
-      --           maxLineLength = 120,
-      --         },
-      --         pylsp_mypy = {
-      --           enabled = true,
-      --           overrides = { '--python-executable', py_path, true },
-      --           report_progress = true,
-      --           live_mode = false,
-      --         },
-      --       },
-      --     },
-      --   },
-      -- }
+      require('mason-tool-installer').setup {
+        ensure_installed = {
+          'stylua', -- Used to format Lua code
+          'prettierd',
+        },
+      }
+
+      for _, server_name in ipairs(ensure_installed) do
+        local config = servers[server_name] or {}
+        vim.lsp.config(server_name, config)
+        vim.lsp.enable(server_name)
+      end
 
       require('mason-lspconfig').setup {
-        ensure_installed = {},
-        automatic_installation = false,
-        handlers = {
-          function(server_name)
-            -- local config = servers[server_name] or {}
-            -- vim.lsp.config(server_name, config)
-            -- -- vim.lsp.enable(server_name)
-            local server = servers[server_name] or {}
-            server.capabilities = vim.tbl_deep_extend('force', {}, capabilities, server.capabilities or {})
-            require('lspconfig')[server_name].setup(server)
-          end,
-        },
+        ensure_installed = ensure_installed,
       }
     end,
   },
@@ -877,39 +849,6 @@ require('lazy').setup({
       --    - Treesitter + textobjects: https://github.com/nvim-treesitter/nvim-treesitter-textobjects
     end,
   },
-  {
-    'windwp/nvim-autopairs',
-    event = 'InsertEnter',
-    config = true,
-    -- use opts = {} for passing setup options
-    -- this is equivalent to setup({}) function
-  },
-  {
-    'nvim-neo-tree/neo-tree.nvim',
-    version = '*',
-    dependencies = {
-      'nvim-lua/plenary.nvim',
-      'nvim-tree/nvim-web-devicons', -- not strictly required, but recommended
-      'MunifTanjim/nui.nvim',
-    },
-    cmd = 'Neotree',
-    keys = {
-      { '\\', ':Neotree reveal<CR>', { desc = 'NeoTree reveal' } },
-    },
-    opts = {
-      filesystem = {
-        visible = true,
-        window = {
-          mappings = {
-            ['\\'] = 'close_window',
-            ['P'] = { 'toggle_preview', config = { use_float = false, use_image_nvim = true } },
-            ['<C-b>'] = { 'scroll_preview', config = { direction = 10 } },
-            ['<C-f>'] = { 'scroll_preview', config = { direction = -10 } },
-          },
-        },
-      },
-    },
-  },
   { import = 'custom.plugins' },
   {
     'nvim-tree/nvim-web-devicons',
@@ -941,6 +880,13 @@ require('lazy').setup({
     end,
   },
   {
+    'windwp/nvim-autopairs',
+    event = 'InsertEnter',
+    config = true,
+    -- use opts = {} for passing setup options
+    -- this is equivalent to setup({}) function
+  },
+  {
     'windwp/nvim-ts-autotag',
     lazy = false,
     dependencies = 'nvim-treesitter/nvim-treesitter',
@@ -948,38 +894,38 @@ require('lazy').setup({
       require('nvim-ts-autotag').setup()
     end,
   },
-  {
-    'yetone/avante.nvim',
-    event = 'VeryLazy',
-    lazy = false,
-    version = false, -- set this if you want to always pull the latest change
-    opts = {},
-    build = 'make',
-    dependencies = {
-      'nvim-treesitter/nvim-treesitter',
-      'stevearc/dressing.nvim',
-      'nvim-lua/plenary.nvim',
-      'MunifTanjim/nui.nvim',
-      --- The below dependencies are optional,
-      'nvim-tree/nvim-web-devicons', -- or echasnovski/mini.icons
-      'zbirenbaum/copilot.lua', -- for providers='copilot'
-      {
-        -- support for image pasting
-        'HakonHarnes/img-clip.nvim',
-        event = 'VeryLazy',
-        opts = {
-          default = {
-            embed_image_as_base64 = false,
-            prompt_for_file_name = false,
-            drag_and_drop = {
-              insert_mode = true,
-            },
-            use_absolute_path = true,
-          },
-        },
-      },
-    },
-  },
+  -- {
+  --   'yetone/avante.nvim',
+  --   event = 'VeryLazy',
+  --   lazy = false,
+  --   version = false, -- set this if you want to always pull the latest change
+  --   opts = {},
+  --   build = 'make',
+  --   dependencies = {
+  --     'nvim-treesitter/nvim-treesitter',
+  --     'stevearc/dressing.nvim',
+  --     'nvim-lua/plenary.nvim',
+  --     'MunifTanjim/nui.nvim',
+  --     --- The below dependencies are optional,
+  --     'nvim-tree/nvim-web-devicons', -- or echasnovski/mini.icons
+  --     'zbirenbaum/copilot.lua', -- for providers='copilot'
+  --     {
+  --       -- support for image pasting
+  --       'HakonHarnes/img-clip.nvim',
+  --       event = 'VeryLazy',
+  --       opts = {
+  --         default = {
+  --           embed_image_as_base64 = false,
+  --           prompt_for_file_name = false,
+  --           drag_and_drop = {
+  --             insert_mode = true,
+  --           },
+  --           use_absolute_path = true,
+  --         },
+  --       },
+  --     },
+  --   },
+  -- },
   {
     -- Make sure to set this up properly if you have lazy=true
     'MeanderingProgrammer/render-markdown.nvim',
