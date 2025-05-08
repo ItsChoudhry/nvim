@@ -310,9 +310,6 @@ require('lazy').setup({
       -- Useful status updates for LSP.
       -- NOTE: `opts = {}` is the same as calling `require('fidget').setup({})`
       { 'j-hui/fidget.nvim', opts = {} },
-
-      -- Allows extra capabilities provided by nvim-cmp
-      'hrsh7th/cmp-nvim-lsp',
     },
     config = function()
       -- Brief aside: **What is LSP?**
@@ -438,22 +435,6 @@ require('lazy').setup({
         end,
       })
 
-      -- LSP servers and clients are able to communicate to each other what features they support.
-      --  By default, Neovim doesn't support everything that is in the LSP specification.
-      --  When you add nvim-cmp, luasnip, etc. Neovim now has *more* capabilities.
-      --  So, we create new capabilities with nvim cmp, and then broadcast that to the servers.
-      local capabilities = vim.lsp.protocol.make_client_capabilities()
-      capabilities = vim.tbl_deep_extend('force', capabilities, require('cmp_nvim_lsp').default_capabilities())
-
-      -- Enable the following language servers
-      --  Feel free to add/remove any LSPs that you want here. They will automatically be installed.
-      --
-      --  Add any additional override configuration in the following tables. Available keys are:
-      --  - cmd (table): Override the default command used to start the server
-      --  - filetypes (table): Override the default list of associated filetypes for the server
-      --  - capabilities (table): Override fields in capabilities. Can be used to disable certain LSP features.
-      --  - settings (table): Override the default settings passed when initializing the server.
-      --        For example, to see the options for `lua_ls`, you could go to: https://luals.github.io/wiki/settings/
       local venv_path = os.getenv 'VIRTUAL_ENV'
       local py_path = nil
       -- decide which python executable to use for mypy
@@ -462,6 +443,7 @@ require('lazy').setup({
       else
         py_path = vim.g.python3_host_prog
       end
+
       local servers = {
         clangd = {},
         cmake = {},
@@ -476,10 +458,11 @@ require('lazy').setup({
           },
         },
         pylsp = {
+          cmd = { vim.fn.expand '~/.local/share/nvim/mason/packages/python-lsp-server/venv/bin/pylsp' },
           settings = {
             pylsp = {
               plugins = {
-                maccabe = { enabled = true },
+                mccabe = { enabled = true },
                 pyflakes = { enabled = false },
                 flake8 = {
                   enabled = false,
@@ -504,7 +487,14 @@ require('lazy').setup({
         },
         ts_ls = {},
         tailwindcss = {},
-        eslint = {},
+        eslint = {
+          on_attach = function(client, bufnr)
+            vim.api.nvim_create_autocmd('BufWritePre', {
+              buffer = bufnr,
+              command = 'EslintFixAll',
+            })
+          end,
+        },
         lua_ls = {
           -- cmd = {...},
           -- filetypes = { ...},
@@ -521,16 +511,6 @@ require('lazy').setup({
         },
       }
 
-      -- Ensure the servers and tools above are installed
-      --  To check the current status of installed tools and/or manually install
-      --  other tools, you can run
-      --    :Mason
-      --
-      --  You can press `g?` for help in this menu.
-      require('mason').setup()
-
-      -- You can add other tools here that you want Mason to install
-      -- for you, so that they are available from within Neovim.
       local ensure_installed = vim.tbl_keys(servers or {})
       vim.list_extend(ensure_installed, {
         'stylua', -- Used to format Lua code
@@ -538,31 +518,48 @@ require('lazy').setup({
       })
       require('mason-tool-installer').setup { ensure_installed = ensure_installed }
 
+      -- require('lspconfig').pylsp.setup {
+      --   cmd = { vim.fn.expand '~/.local/share/nvim/mason/packages/python-lsp-server/venv/bin/pylsp' },
+      --   settings = {
+      --     pylsp = {
+      --       plugins = {
+      --         maccabe = { enabled = true },
+      --         pyflakes = { enabled = false },
+      --         flake8 = {
+      --           enabled = false,
+      --           maxLineLength = 120,
+      --         },
+      --         autopep8 = { enabled = false },
+      --         yapf = { enabled = false },
+      --         pycodestyle = {
+      --           enabled = true,
+      --           ignore = { 'W503', 'E203' },
+      --           maxLineLength = 120,
+      --         },
+      --         pylsp_mypy = {
+      --           enabled = true,
+      --           overrides = { '--python-executable', py_path, true },
+      --           report_progress = true,
+      --           live_mode = false,
+      --         },
+      --       },
+      --     },
+      --   },
+      -- }
+
       require('mason-lspconfig').setup {
+        ensure_installed = {},
+        automatic_installation = false,
         handlers = {
           function(server_name)
+            -- local config = servers[server_name] or {}
+            -- vim.lsp.config(server_name, config)
+            -- -- vim.lsp.enable(server_name)
             local server = servers[server_name] or {}
-            -- This handles overriding only values explicitly passed
-            -- by the server configuration above. Useful when disabling
-            -- certain features of an LSP (for example, turning off formatting for tsserver)
             server.capabilities = vim.tbl_deep_extend('force', {}, capabilities, server.capabilities or {})
-            if server_name == 'rust_analyzer' then
-              require('mason-lspconfig').setup_handlers {
-                ['rust_analyzer'] = function() end,
-              }
-            else
-              require('lspconfig')[server_name].setup(server)
-            end
+            require('lspconfig')[server_name].setup(server)
           end,
         },
-      }
-      require('lspconfig').eslint.setup {
-        on_attach = function(client, bufnr)
-          vim.api.nvim_create_autocmd('BufWritePre', {
-            buffer = bufnr,
-            command = 'EslintFixAll',
-          })
-        end,
       }
     end,
   },
