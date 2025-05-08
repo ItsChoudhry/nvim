@@ -524,30 +524,19 @@ require('lazy').setup({
             },
           },
         },
-        pylsp = {
-          cmd = { vim.fn.expand '~/.local/share/nvim/mason/packages/python-lsp-server/venv/bin/pylsp' },
+        basedpyright = {
           settings = {
-            pylsp = {
-              plugins = {
-                mccabe = { enabled = true },
-                pyflakes = { enabled = false },
-                flake8 = {
-                  enabled = false,
-                  maxLineLength = 120,
+            basedpyright = {
+              analysis = {
+                autoImportCompletions = true,
+                diagnosticMode = 'workspace',
+                diagnosticSeverityOverrides = {
+                  reportConstantRedefinition = false,
+                  reportMissingTypeStubs = false,
+                  reportUnknownVariableType = false,
+                  reportUnusedParameter = false,
                 },
-                autopep8 = { enabled = false },
-                yapf = { enabled = false },
-                pycodestyle = {
-                  enabled = true,
-                  ignore = { 'W503', 'E203' },
-                  maxLineLength = 120,
-                },
-                pylsp_mypy = {
-                  enabled = true,
-                  overrides = { '--python-executable', py_path, true },
-                  report_progress = true,
-                  live_mode = false,
-                },
+                typeCheckingMode = 'off',
               },
             },
           },
@@ -595,7 +584,7 @@ require('lazy').setup({
 
       require('mason-lspconfig').setup {
         ensure_installed = {}, -- explicitly set to an empty table (Kickstart populates installs via mason-tool-installer)
-        automatic_installation = false,
+        automatic_enable = false,
       }
     end,
   },
@@ -731,6 +720,8 @@ require('lazy').setup({
         -- See :h blink-cmp-config-keymap for defining your own keymap
         preset = 'default',
 
+        -- ['<enter>'] = { 'select_and_accept' },
+
         -- For more advanced Luasnip keymaps (e.g. selecting choice nodes, expansion) see:
         --    https://github.com/L3MON4D3/LuaSnip?tab=readme-ov-file#keymaps
       },
@@ -744,7 +735,7 @@ require('lazy').setup({
       completion = {
         -- By default, you may press `<c-space>` to show the documentation.
         -- Optionally, set `auto_show = true` to show the documentation after a delay.
-        documentation = { auto_show = false, auto_show_delay_ms = 500 },
+        documentation = { auto_show = true, delay = 0 },
       },
 
       sources = {
