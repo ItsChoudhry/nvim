@@ -524,6 +524,24 @@ require('lazy').setup({
             },
           },
         },
+        -- pylsp = {
+        --   settings = {
+        --     pylsp = {
+        --       plugins = {
+        --         mccabe = { enabled = true },
+        --         pyflakes = { enabled = false },
+        --         flake8 = { enabled = false },
+        --         autopep8 = { enabled = false },
+        --         yapf = { enabled = false },
+        --         pycodestyle = {
+        --           enabled = true,
+        --           ignore = { 'W503', 'E203' },
+        --           maxLineLength = 120,
+        --         },
+        --       },
+        --     },
+        --   },
+        -- },
         basedpyright = {
           settings = {
             basedpyright = {
