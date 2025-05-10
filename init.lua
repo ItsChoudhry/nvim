@@ -528,16 +528,18 @@ require('lazy').setup({
         --   settings = {
         --     pylsp = {
         --       plugins = {
-        --         mccabe = { enabled = true },
+        --         pylsp_rope = { enabled = true },
+        --         rope = { enabled = false },
+        --         pycodestyle = { enabled = false },
         --         pyflakes = { enabled = false },
+        --         pydocstyle = { enabled = false },
+        --         mccabe = { enabled = false },
+        --         yapf = { enabled = false },
         --         flake8 = { enabled = false },
         --         autopep8 = { enabled = false },
-        --         yapf = { enabled = false },
-        --         pycodestyle = {
-        --           enabled = true,
-        --           ignore = { 'W503', 'E203' },
-        --           maxLineLength = 120,
-        --         },
+        --         pyls_isort = { enabled = false },
+        --         black = { enabled = false },
+        --         pylint = { enabled = false },
         --       },
         --     },
         --   },
