@@ -609,6 +609,18 @@ require('lazy').setup({
     end,
   },
   {
+    'nvimtools/none-ls.nvim',
+    dependencies = { 'nvim-lua/plenary.nvim' },
+    config = function()
+      local null_ls = require 'null-ls'
+      null_ls.setup {
+        sources = {
+          null_ls.builtins.diagnostics.mypy.with {},
+        },
+      }
+    end,
+  },
+  {
     'pmizio/typescript-tools.nvim',
     dependencies = { 'nvim-lua/plenary.nvim', 'neovim/nvim-lspconfig' },
     opts = {},
@@ -949,7 +961,9 @@ require('lazy').setup({
     event = 'VeryLazy',
     lazy = false,
     version = false, -- set this if you want to always pull the latest change
-    opts = {},
+    opts = {
+      hints = { enabled = false },
+    },
     build = 'make',
     dependencies = {
       'nvim-treesitter/nvim-treesitter',
