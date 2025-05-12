@@ -615,7 +615,9 @@ require('lazy').setup({
       local null_ls = require 'null-ls'
       null_ls.setup {
         sources = {
-          null_ls.builtins.diagnostics.mypy.with {},
+          null_ls.builtins.diagnostics.mypy.with {
+            temp_dir = '/tmp',
+          },
         },
       }
     end,
