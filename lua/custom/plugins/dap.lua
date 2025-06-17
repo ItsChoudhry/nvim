@@ -132,7 +132,7 @@ return {
 
     dap.adapters.codelldb = {
       type = 'executable',
-      command = '/home/itschoudhry/.local/share/nvim/mason/bin/codelldb',
+      command = '/home/choudhry/.local/share/nvim/mason/bin/codelldb',
       name = 'codelldb',
     }
 
