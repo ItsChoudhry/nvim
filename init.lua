@@ -632,13 +632,6 @@ require('lazy').setup({
     version = '^6', -- Recommended
     lazy = false, -- This plugin is already lazy
   },
-  {
-    'rust-lang/rust.vim',
-    ft = 'rust',
-    init = function()
-      vim.g.rustfmt_autosave = 1
-    end,
-  },
   { -- Autoformat
     'stevearc/conform.nvim',
     event = { 'BufWritePre' },
