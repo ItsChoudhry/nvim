@@ -48,6 +48,7 @@ local function setup_default_configurations()
   dap.configurations.c = codelldb_configuration
   dap.configurations.cpp = codelldb_configuration
   dap.configurations.asm = codelldb_configuration
+  dap.configurations.rust = codelldb_configuration
 
   require('dap-python').setup 'python3'
   table.insert(require('dap').configurations.python, {
