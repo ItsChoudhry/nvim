@@ -29,12 +29,63 @@ local function define_colors()
   })
 end
 
+local function get_cmake_binary(target)
+  -- Look in ./build/ directory relative to the current workspace
+  local exe_path = vim.fn.getcwd() .. '/build/' .. target
+  if vim.fn.filereadable(exe_path) == 1 then
+    return exe_path
+  else
+    return vim.fn.input('Binary not found, enter path to executable: ', exe_path, 'file')
+  end
+end
+
 local function setup_default_configurations()
   local dap = require 'dap'
-  local codelldb_configuration = {
+  -- will work out how to auto setup cpp too in the future when I know the layout better
+  -- local cpp_configuration = {
+  --   {
+  --     name = 'CMake: Launch',
+  --     type = 'cppdbg',
+  --     request = 'launch',
+  --     program = function()
+  --       return get_cmake_binary 'my_executable' -- Replace with your target name
+  --     end,
+  --     cwd = '${workspaceFolder}',
+  --     stopOnEntry = false,
+  --     args = {},
+  --   },
+  --   {
+  --     name = 'CMake: Launch with args',
+  --     type = 'cppdbg',
+  --     request = 'launch',
+  --     program = function()
+  --       return get_cmake_binary 'my_executable'
+  --     end,
+  --     cwd = '${workspaceFolder}',
+  --     stopOnEntry = false,
+  --     args = function()
+  --       local input = vim.fn.input 'Program arguments: '
+  --       return vim.fn.split(input, ' ')
+  --     end,
+  --   },
+  --   {
+  --     name = 'Attach to gdbserver :1234',
+  --     type = 'cppdbg',
+  --     request = 'launch',
+  --     MIMode = 'gdb',
+  --     miDebuggerServerAddress = 'localhost:1234',
+  --     miDebuggerPath = '/usr/bin/gdb',
+  --     cwd = '${workspaceFolder}',
+  --     program = function()
+  --       return get_cmake_binary 'my_executable' -- Replace with your target name
+  --     end,
+  --   },
+  -- }
+
+  local cppdbg_configuration = {
     {
       name = 'Launch',
-      type = 'codelldb',
+      type = 'cppdbg',
       request = 'launch',
       program = function()
         return vim.fn.input('Path to executable: ', vim.fn.getcwd() .. '/', 'file')
@@ -43,12 +94,56 @@ local function setup_default_configurations()
       stopOnEntry = false,
       args = {},
     },
+    {
+      name = 'Launch with args',
+      type = 'cppdbg',
+      request = 'launch',
+      program = function()
+        return vim.fn.input('Path to executable: ', vim.fn.getcwd() .. '/', 'file')
+      end,
+      cwd = '${workspaceFolder}',
+      stopOnEntry = false,
+      args = function()
+        local input = vim.fn.input 'Program arguments: '
+        return vim.fn.split(input, ' ')
+      end,
+    },
   }
 
-  dap.configurations.c = codelldb_configuration
-  dap.configurations.cpp = codelldb_configuration
-  dap.configurations.asm = codelldb_configuration
-  dap.configurations.rust = codelldb_configuration
+  local rust_configuration = {
+    {
+      name = 'Rust: Launch',
+      type = 'cppdbg',
+      request = 'launch',
+      program = function()
+        local crate = vim.fn.fnamemodify(vim.fn.getcwd(), ':t')
+        return vim.fn.getcwd() .. '/target/debug/' .. crate
+      end,
+      cwd = '${workspaceFolder}',
+      stopOnEntry = false,
+      args = {},
+    },
+    {
+      name = 'Rust: Launch with args',
+      type = 'cppdbg',
+      request = 'launch',
+      program = function()
+        local crate = vim.fn.fnamemodify(vim.fn.getcwd(), ':t')
+        return vim.fn.getcwd() .. '/target/debug/' .. crate
+      end,
+      cwd = '${workspaceFolder}',
+      stopOnEntry = false,
+      args = function()
+        local input = vim.fn.input 'Program arguments: '
+        return vim.fn.split(input, ' ')
+      end,
+    },
+  }
+
+  dap.configurations.c = cppdbg_configuration
+  dap.configurations.cpp = cppdbg_configuration
+  dap.configurations.asm = cppdbg_configuration
+  dap.configurations.rust = rust_configuration
 
   require('dap-python').setup 'python3'
   table.insert(require('dap').configurations.python, {
@@ -137,8 +232,14 @@ return {
       name = 'codelldb',
     }
 
+    dap.adapters.cppdbg = {
+      id = 'cppdbg',
+      type = 'executable',
+      command = '/home/choudhry/.local/share/nvim/mason/bin/OpenDebugAD7',
+    }
     vim.keymap.set('n', '<F5>', function()
       require('dap').continue()
     end)
   end,
 }
+
