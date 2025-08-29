@@ -585,15 +585,14 @@ require('lazy').setup({
             },
           },
         },
+        stylua = {},
+        prettierd = {},
       }
 
       local ensure_installed = vim.tbl_keys(servers or {})
 
       require('mason-tool-installer').setup {
-        ensure_installed = {
-          'stylua', -- Used to format Lua code
-          'prettierd',
-        },
+        ensure_installed = ensure_installed,
       }
 
       for _, server_name in ipairs(ensure_installed) do
