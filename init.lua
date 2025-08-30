@@ -622,6 +622,17 @@ require('lazy').setup({
     end,
   },
   {
+    'rhysd/vim-clang-format',
+    config = function()
+      -- Detect .clang-format file in project root
+      vim.g['clang_format#detect_style_file'] = 1
+      -- Enable auto-formatting on save for C++ files
+      vim.g['clang_format#auto_format'] = 1
+      -- Specify filetypes (optional, defaults include cpp, c)
+      vim.g['clang_format#filetypes'] = { 'c', 'cpp' }
+    end,
+  },
+  {
     'pmizio/typescript-tools.nvim',
     dependencies = { 'nvim-lua/plenary.nvim', 'neovim/nvim-lspconfig' },
     opts = {},
