@@ -697,6 +697,21 @@ require('lazy').setup({
       },
     },
   },
+  {
+    'michaelrommel/nvim-silicon',
+    lazy = true,
+    cmd = 'Silicon',
+    config = function()
+      require('silicon').setup {
+        font = 'MonaspiceNe Nerd Font',
+        theme = 'Visual Studio Dark+',
+        background = '#1b2229',
+        window_title = function()
+          return vim.fn.fnamemodify(vim.api.nvim_buf_get_name(vim.api.nvim_get_current_buf()), ':t')
+        end,
+      }
+    end,
+  },
   { -- Autocompletion
     'saghen/blink.cmp',
     event = 'VimEnter',
