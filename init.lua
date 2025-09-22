@@ -516,61 +516,28 @@ require('lazy').setup({
           settings = {
             init_options = {
               settings = {
-                lint = {
-                  enable = true,
-                },
-                lineLength = 120,
+                -- lint = {
+                --  enable = true,
+                -- },
+                -- lineLength = 120,
               },
             },
           },
         },
-        -- pylsp = {
+       -- pyright = {
         --   settings = {
-        --     pylsp = {
-        --       plugins = {
-        --         pylsp_rope = { enabled = true },
-        --         rope = { enabled = false },
-        --         pycodestyle = { enabled = false },
-        --         pyflakes = { enabled = false },
-        --         pydocstyle = { enabled = false },
-        --         mccabe = { enabled = false },
-        --         yapf = { enabled = false },
-        --         flake8 = { enabled = false },
-        --         autopep8 = { enabled = false },
-        --         pyls_isort = { enabled = false },
-        --         black = { enabled = false },
-        --         pylint = { enabled = false },
+        --     python = {
+        --       analysis = {
+        --         -- Defer to project (pyproject.toml / setup.cfg / mypy.ini) for rules & type checking behavior.
+        --         autoSearchPaths = true,
+        --         useLibraryCodeForTypes = true,
+        --         diagnosticMode = 'workspace',
+        --         -- Leaving typeCheckingMode unset so pyright reads project config (pyproject.toml / pyrightconfig.json) if present.
         --       },
         --     },
         --   },
         -- },
-        basedpyright = {
-          settings = {
-            basedpyright = {
-              analysis = {
-                autoImportCompletions = true,
-                diagnosticMode = 'workspace',
-                diagnosticSeverityOverrides = {
-                  reportConstantRedefinition = false,
-                  reportMissingTypeStubs = false,
-                  reportUnknownVariableType = false,
-                  reportUnusedParameter = false,
-                },
-                typeCheckingMode = 'off',
-              },
-            },
-          },
-        },
-        ts_ls = {},
-        tailwindcss = {},
-        eslint = {
-          on_attach = function(client, bufnr)
-            vim.api.nvim_create_autocmd('BufWritePre', {
-              buffer = bufnr,
-              command = 'EslintFixAll',
-            })
-          end,
-        },
+        --
         lua_ls = {
           -- cmd = { ... },
           -- filetypes = { ... },
@@ -585,14 +552,21 @@ require('lazy').setup({
             },
           },
         },
-        stylua = {},
-        prettierd = {},
       }
 
       local ensure_installed = vim.tbl_keys(servers or {})
 
       require('mason-tool-installer').setup {
-        ensure_installed = ensure_installed,
+        ensure_installed = {
+          'stylua', -- Used to format Lua code
+          'prettierd',
+          'codelldb',
+          'cpptools',
+          'ruff',
+          'pyright',
+          'clangd',
+          'cmake'
+        },
       }
 
       for _, server_name in ipairs(ensure_installed) do
@@ -622,6 +596,50 @@ require('lazy').setup({
     end,
   },
   {
+    'nvimtools/none-ls.nvim',
+    dependencies = { 'nvim-lua/plenary.nvim', 'nvimtools/none-ls-extras.nvim' },
+    config = function()
+      local null_ls = require 'null-ls'
+      local extras = require 'none-ls.diagnostics.eslint_d'
+      local formatting = require 'none-ls.formatting.eslint_d'
+      local augroup = vim.api.nvim_create_augroup('LspFormatting', {})
+
+      null_ls.setup {
+        sources = {
+          null_ls.builtins.formatting.prettier.with {
+            filetypes = { 'javascript', 'typescript', 'javascriptreact', 'typescriptreact' },
+          },
+          null_ls.builtins.diagnostics.mypy.with {
+            temp_dir = '/tmp',
+            command = '/mnt/c/Users/camjad/source/venv/bin/mypy',
+            timeout = 10000,
+          },
+          extras,
+          formatting,
+        },
+
+        on_attach = function(client, bufnr)
+          if client.supports_method 'textDocument/formatting' then
+            vim.api.nvim_clear_autocmds { group = augroup, buffer = bufnr }
+            vim.api.nvim_create_autocmd('BufWritePre', {
+              group = augroup,
+              buffer = bufnr,
+              callback = function()
+                vim.lsp.buf.format {
+                  bufnr = bufnr,
+                  async = false,
+                  filter = function(c)
+                    return c.name == 'null-ls'
+                  end,
+                }
+              end,
+            })
+          end
+        end,
+      }
+    end,
+  },
+  {
     'rhysd/vim-clang-format',
     config = function()
       -- Detect .clang-format file in project root
@@ -631,11 +649,6 @@ require('lazy').setup({
       -- Specify filetypes (optional, defaults include cpp, c)
       vim.g['clang_format#filetypes'] = { 'c', 'cpp' }
     end,
-  },
-  {
-    'pmizio/typescript-tools.nvim',
-    dependencies = { 'nvim-lua/plenary.nvim', 'neovim/nvim-lspconfig' },
-    opts = {},
   },
   {
     'mrcjkb/rustaceanvim',
@@ -657,20 +670,17 @@ require('lazy').setup({
       },
     },
     opts = {
-      formatters = {
-        -- prettierd = {
-        --   prepend_args = {
-        --     '--tabWidth=4',
-        --     '--useTabs=false',
-        --   },
-        -- },
-      },
+      formatters = {},
       notify_on_error = false,
       format_on_save = function(bufnr)
-        -- Disable "format_on_save lsp_fallback" for languages that don't
-        -- have a well standardized coding style. You can add additional
-        -- languages here or re-enable it for the disabled ones.
-        local disable_filetypes = { c = true, cpp = true }
+        local disable_filetypes = {
+          c = true,
+          cpp = true,
+          javascript = true,
+          javascriptreact = true,
+          typescript = true,
+          typescriptreact = true,
+        }
         if disable_filetypes[vim.bo[bufnr].filetype] then
           return nil
         else
@@ -682,10 +692,6 @@ require('lazy').setup({
       end,
       formatters_by_ft = {
         lua = { 'stylua' },
-        javascript = { 'prettierd', 'prettier' },
-        javascriptreact = { 'prettierd' },
-        typescript = { 'prettierd' },
-        typescriptreact = { 'prettierd' },
         markdown = { 'prettierd' },
         mdx = { 'prettierd' },
         json = { 'prettierd' },
@@ -900,8 +906,9 @@ require('lazy').setup({
         'cpp',
         'rust',
         'javascript',
-        'go',
+        'typescript',
         'c',
+        'cmake',
         'diff',
         'html',
         'lua',
@@ -911,6 +918,7 @@ require('lazy').setup({
         'query',
         'vim',
         'vimdoc',
+        'yaml'
       },
       -- Autoinstall languages that are not installed
       auto_install = true,
