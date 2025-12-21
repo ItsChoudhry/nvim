@@ -6,7 +6,7 @@ return {
     vim.g.mkdp_filetypes = { 'markdown' }
   end,
   config = function()
-    vim.keymap.set('n', '<Leader>mpt', '<Plug>MarkdownPreviewToggle', { desc = 'Markdown Preview' })
+    vim.keymap.set('n', '<Leader>mp', '<Plug>MarkdownPreviewToggle', { desc = 'Markdown Preview' })
   end,
   ft = { 'markdown' },
 }
