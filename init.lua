@@ -21,6 +21,21 @@ vim.opt.showmode = false
 --  See `:help 'clipboard'`
 vim.opt.clipboard = 'unnamedplus'
 
+-- Over SSH, copy through the terminal with OSC 52.
+--  Needs `set -g set-clipboard on` and `set -g allow-passthrough on` in tmux.conf
+if vim.env.SSH_TTY then
+  local osc52 = require 'vim.ui.clipboard.osc52'
+  -- OSC 52 paste queries often hang inside tmux, so paste from the local register instead
+  local function paste()
+    return { vim.fn.split(vim.fn.getreg '', '\n'), vim.fn.getregtype '' }
+  end
+  vim.g.clipboard = {
+    name = 'OSC 52',
+    copy = { ['+'] = osc52.copy '+', ['*'] = osc52.copy '*' },
+    paste = { ['+'] = paste, ['*'] = paste },
+  }
+end
+
 -- Enable break indent
 vim.opt.breakindent = true
 
@@ -58,9 +73,6 @@ vim.opt.inccommand = 'split'
 -- Show which line your cursor is on
 vim.opt.cursorline = true
 
--- Minimal number of screen lines to keep above and below the cursor.
-vim.opt.scrolloff = 10
-
 -- if performing an operation that would fail due to unsaved changes in the buffer (like `:q`),
 -- instead raise a dialog asking if you wish to save the current file(s)
 -- See `:help 'confirm'`
@@ -69,27 +81,23 @@ vim.opt.confirm = true
 -- [[ Basic Keymaps ]]
 --  See `:help vim.keymap.set()`
 
--- Clear highlights on search when pressing <Esc> in normal mode
-vim.opt.hlsearch = false
-vim.keymap.set('n', '<Esc>', '<cmd>nohlsearch<CR>')
-
 -- Diagnostic keymaps
+-- ([d and ]d are built in on Neovim 0.11+)
+local vt_config = { source = 'if_many', spacing = 2 }
+local vt_enabled = true
 
-vim.diagnostic.config { virtual_text = true }
-local function toggle_vt()
-  local curr = vim.diagnostic.config().virtual_text
-  if curr then
-    vim.diagnostic.config { virtual_text = false }
-  else
-    vim.diagnostic.config { virtual_text = true }
-  end
-end
-
-vim.keymap.set('n', '[d', vim.diagnostic.goto_prev, { desc = 'Go to previous [D]iagnostic message' })
-vim.keymap.set('n', ']d', vim.diagnostic.goto_next, { desc = 'Go to next [D]iagnostic message' })
 vim.keymap.set('n', '<leader>e', vim.diagnostic.open_float, { desc = 'Show diagnostic [E]rror messages' })
 vim.keymap.set('n', '<leader>q', vim.diagnostic.setloclist, { desc = 'Open diagnostic [Q]uickfix list' })
-vim.keymap.set('n', '<leader>vt', toggle_vt, { desc = 'toggle virtual text' })
+vim.keymap.set('n', '<leader>vt', function()
+  vt_enabled = not vt_enabled
+  vim.diagnostic.config { virtual_text = vt_enabled and vt_config or false }
+end, { desc = 'toggle virtual text' })
+
+-- Toggle format on save (read by conform below)
+vim.keymap.set('n', '<leader>tf', function()
+  vim.g.disable_autoformat = not vim.g.disable_autoformat
+  print('autoformat ' .. (vim.g.disable_autoformat and 'off' or 'on'))
+end, { desc = '[T]oggle auto[F]ormat' })
 
 -- Exit terminal mode in the builtin terminal with a shortcut that is a bit easier
 -- for people to discover. Otherwise, you normally need to press <C-\><C-n>, which
@@ -105,32 +113,17 @@ vim.keymap.set('t', '<Esc><Esc>', '<C-\\><C-n>', { desc = 'Exit terminal mode' }
 -- vim.keymap.set('n', '<up>', '<cmd>echo "Use k to move!!"<CR>')
 -- vim.keymap.set('n', '<down>', '<cmd>echo "Use j to move!!"<CR>')
 
--- Keybinds to make split navigation easier.
---  Use CTRL+<hjkl> to switch between windows
---
---  See `:help wincmd` for a list of all window commands
-vim.keymap.set('n', '<C-h>', '<C-w><C-h>', { desc = 'Move focus to the left window' })
-vim.keymap.set('n', '<C-l>', '<C-w><C-l>', { desc = 'Move focus to the right window' })
-vim.keymap.set('n', '<C-j>', '<C-w><C-j>', { desc = 'Move focus to the lower window' })
-vim.keymap.set('n', '<C-k>', '<C-w><C-k>', { desc = 'Move focus to the upper window' })
-
--- NOTE: Some terminals have colliding keymaps or are not able to send distinct keycodes
--- vim.keymap.set("n", "<C-S-h>", "<C-w>H", { desc = "Move window to the left" })
--- vim.keymap.set("n", "<C-S-l>", "<C-w>L", { desc = "Move window to the right" })
--- vim.keymap.set("n", "<C-S-j>", "<C-w>J", { desc = "Move window to the lower" })
--- vim.keymap.set("n", "<C-S-k>", "<C-w>K", { desc = "Move window to the upper" })
-
 -- [[ Basic Autocommands ]]
 --  See `:help lua-guide-autocommands`
 
 -- Highlight when yanking (copying) text
 --  Try it with `yap` in normal mode
---  See `:help vim.highlight.on_yank()`
+--  See `:help vim.hl.on_yank()`
 vim.api.nvim_create_autocmd('TextYankPost', {
   desc = 'Highlight when yanking (copying) text',
   group = vim.api.nvim_create_augroup('kickstart-highlight-yank', { clear = true }),
   callback = function()
-    vim.highlight.on_yank()
+    vim.hl.on_yank()
   end,
 })
 
@@ -186,22 +179,7 @@ require('lazy').setup({
   --        end,
   --    }
   --
-  -- Here is a more advanced example where we pass configuration
-  -- options to `gitsigns.nvim`.
-  --
-  -- See `:help gitsigns` to understand what the configuration keys do
-  { -- Adds git related signs to the gutter, as well as utilities for managing changes
-    'lewis6991/gitsigns.nvim',
-    opts = {
-      signs = {
-        add = { text = '+' },
-        change = { text = '~' },
-        delete = { text = '_' },
-        topdelete = { text = '‾' },
-        changedelete = { text = '~' },
-      },
-    },
-  },
+  -- (gitsigns itself is configured in kickstart.plugins.gitsigns, required near the bottom)
   { -- Fuzzy Finder (files, lsp, etc)
     'nvim-telescope/telescope.nvim',
     event = 'VimEnter',
@@ -221,9 +199,6 @@ require('lazy').setup({
         end,
       },
       { 'nvim-telescope/telescope-ui-select.nvim' },
-
-      -- Useful for getting pretty icons, but requires a Nerd Font.
-      { 'nvim-tree/nvim-web-devicons',            enabled = vim.g.have_nerd_font },
     },
     config = function()
       -- Telescope is a fuzzy finder that comes with a lot of different things that
@@ -322,11 +297,10 @@ require('lazy').setup({
     dependencies = {
       -- Automatically install LSPs and related tools to stdpath for Neovim
       { 'mason-org/mason.nvim', opts = {} }, -- NOTE: Must be loaded before dependants
-      'mason-org/mason-lspconfig.nvim',
       'WhoIsSethDaniel/mason-tool-installer.nvim',
 
       -- Useful status updates for LSP.
-      { 'j-hui/fidget.nvim',    opts = {} },
+      { 'j-hui/fidget.nvim', opts = {} },
 
       -- Allows extra capabilities provided by blink.cmp
       'saghen/blink.cmp',
@@ -430,6 +404,11 @@ require('lazy').setup({
           --
           -- When you move your cursor, the highlights will be cleared (the second autocommand).
           local client = vim.lsp.get_client_by_id(event.data.client_id)
+
+          if client and client.name == 'ruff' then
+            client.server_capabilities.hoverProvider = false
+          end
+
           if client and client_supports_method(client, vim.lsp.protocol.Methods.textDocument_documentHighlight, event.buf) then
             local highlight_augroup = vim.api.nvim_create_augroup('kickstart-lsp-highlight', { clear = false })
             vim.api.nvim_create_autocmd({ 'CursorHold', 'CursorHoldI' }, {
@@ -479,65 +458,33 @@ require('lazy').setup({
             [vim.diagnostic.severity.HINT] = '󰌶 ',
           },
         } or {},
-        virtual_text = {
-          source = 'if_many',
-          spacing = 2,
-          format = function(diagnostic)
-            local diagnostic_message = {
-              [vim.diagnostic.severity.ERROR] = diagnostic.message,
-              [vim.diagnostic.severity.WARN] = diagnostic.message,
-              [vim.diagnostic.severity.INFO] = diagnostic.message,
-              [vim.diagnostic.severity.HINT] = diagnostic.message,
-            }
-            return diagnostic_message[diagnostic.severity]
-          end,
-        },
+        virtual_text = vt_config,
       }
-
-      local venv_path = os.getenv 'VIRTUAL_ENV'
-      local py_path = nil
-      -- decide which python executable to use for mypy
-      if venv_path ~= nil then
-        py_path = venv_path .. '/bin/python3'
-      else
-        py_path = vim.g.python3_host_prog
-      end
 
       -- LSP servers and clients are able to communicate to each other what features they support.
       --  By default, Neovim doesn't support everything that is in the LSP specification.
       --  When you add blink.cmp, luasnip, etc. Neovim now has *more* capabilities.
       --  So, we create new capabilities with blink.cmp, and then broadcast that to the servers.
-      local capabilities = require('blink.cmp').get_lsp_capabilities()
+      vim.lsp.config('*', { capabilities = require('blink.cmp').get_lsp_capabilities() })
 
       local servers = {
         clangd = {},
         cmake = {},
-        ruff = {
+        ruff = {},
+        vtsls = {}, -- TypeScript / JavaScript
+        basedpyright = {
           settings = {
-            init_options = {
-              settings = {
-                -- lint = {
-                --  enable = true,
-                -- },
-                -- lineLength = 120,
+            basedpyright = {
+              disableOrganizeImports = true, -- ruff handles this
+              analysis = {
+                typeCheckingMode = 'standard',
+                autoSearchPaths = true,
+                useLibraryCodeForTypes = true,
+                diagnosticMode = 'openFilesOnly',
               },
             },
           },
         },
-        -- pyright = {
-        --   settings = {
-        --     python = {
-        --       analysis = {
-        --         -- Defer to project (pyproject.toml / setup.cfg / mypy.ini) for rules & type checking behavior.
-        --         autoSearchPaths = true,
-        --         useLibraryCodeForTypes = true,
-        --         diagnosticMode = 'workspace',
-        --         -- Leaving typeCheckingMode unset so pyright reads project config (pyproject.toml / pyrightconfig.json) if present.
-        --       },
-        --     },
-        --   },
-        -- },
-        --
         lua_ls = {
           -- cmd = { ... },
           -- filetypes = { ... },
@@ -560,12 +507,12 @@ require('lazy').setup({
         ensure_installed = {
           'stylua', -- Used to format Lua code
           'prettierd',
-          'codelldb',
-          'cpptools',
           'ruff',
-          'pyright',
+          'clang-format',
+          'basedpyright',
+          'vtsls',
           'clangd',
-          'cmake'
+          'cmake-language-server',
         },
       }
 
@@ -574,91 +521,17 @@ require('lazy').setup({
         vim.lsp.config(server_name, config)
         vim.lsp.enable(server_name)
       end
-
-      require('mason-lspconfig').setup {
-        ensure_installed = {}, -- explicitly set to an empty table (Kickstart populates installs via mason-tool-installer)
-        automatic_enable = false,
-      }
-    end,
-  },
-  {
-    'nvimtools/none-ls.nvim',
-    dependencies = { 'nvim-lua/plenary.nvim' },
-    config = function()
-      local null_ls = require 'null-ls'
-      null_ls.setup {
-        sources = {
-          null_ls.builtins.diagnostics.mypy.with {
-            temp_dir = '/tmp',
-          },
-        },
-      }
-    end,
-  },
-  {
-    'nvimtools/none-ls.nvim',
-    dependencies = { 'nvim-lua/plenary.nvim', 'nvimtools/none-ls-extras.nvim' },
-    config = function()
-      local null_ls = require 'null-ls'
-      local extras = require 'none-ls.diagnostics.eslint_d'
-      local formatting = require 'none-ls.formatting.eslint_d'
-      local augroup = vim.api.nvim_create_augroup('LspFormatting', {})
-
-      null_ls.setup {
-        sources = {
-          null_ls.builtins.formatting.prettier.with {
-            filetypes = { 'javascript', 'typescript', 'javascriptreact', 'typescriptreact' },
-          },
-          null_ls.builtins.diagnostics.mypy.with {
-            temp_dir = '/tmp',
-            command = '/mnt/c/Users/camjad/source/venv/bin/mypy',
-            timeout = 10000,
-          },
-          extras,
-          formatting,
-        },
-
-        on_attach = function(client, bufnr)
-          if client.supports_method 'textDocument/formatting' then
-            vim.api.nvim_clear_autocmds { group = augroup, buffer = bufnr }
-            vim.api.nvim_create_autocmd('BufWritePre', {
-              group = augroup,
-              buffer = bufnr,
-              callback = function()
-                vim.lsp.buf.format {
-                  bufnr = bufnr,
-                  async = false,
-                  filter = function(c)
-                    return c.name == 'null-ls'
-                  end,
-                }
-              end,
-            })
-          end
-        end,
-      }
-    end,
-  },
-  {
-    'rhysd/vim-clang-format',
-    config = function()
-      -- Detect .clang-format file in project root
-      vim.g['clang_format#detect_style_file'] = 1
-      -- Enable auto-formatting on save for C++ files
-      vim.g['clang_format#auto_format'] = 1
-      -- Specify filetypes (optional, defaults include cpp, c)
-      vim.g['clang_format#filetypes'] = { 'c', 'cpp' }
     end,
   },
   {
     'mrcjkb/rustaceanvim',
     version = '^6', -- Recommended
-    lazy = false,   -- This plugin is already lazy
+    lazy = false, -- This plugin is already lazy
   },
-  {                 -- Autoformat
+  {
     'stevearc/conform.nvim',
-    event = { 'BufWritePre' },
-    cmd = { 'ConformInfo' },
+    event = 'BufWritePre',
+    cmd = 'ConformInfo',
     keys = {
       {
         '<leader>f',
@@ -669,38 +542,57 @@ require('lazy').setup({
         desc = '[F]ormat buffer',
       },
     },
-    opts = {
-      formatters = {},
-      notify_on_error = false,
-      format_on_save = function(bufnr)
-        local disable_filetypes = {
-          c = true,
-          cpp = true,
-          javascript = true,
-          javascriptreact = true,
-          typescript = true,
-          typescriptreact = true,
-        }
-        if disable_filetypes[vim.bo[bufnr].filetype] then
-          return nil
-        else
-          return {
-            timeout_ms = 500,
-            lsp_format = 'fallback',
-          }
+    opts = function()
+      -- Return the dir nvim was opened from if it contains any of `files`
+      local function root_cwd(files)
+        return function()
+          local cwd = vim.fn.getcwd()
+          for _, f in ipairs(files) do
+            if vim.uv.fs_stat(cwd .. '/' .. f) then
+              return cwd
+            end
+          end
         end
-      end,
-      formatters_by_ft = {
-        lua = { 'stylua' },
-        mdx = { 'prettierd' },
-        json = { 'prettierd' },
-        css = { 'prettierd' },
-        html = { 'prettierd' },
-        yaml = { 'prettierd' },
-        cpp = { 'clang-format' },
-        c = { 'clang-format' },
-      },
-    },
+      end
+
+      return {
+        notify_on_error = false,
+        formatters_by_ft = {
+          c = { 'clang-format' },
+          cpp = { 'clang-format' },
+          rust = { 'rustfmt' },
+          python = { 'ruff_organize_imports', 'ruff_format' },
+          javascript = { 'prettierd' },
+          javascriptreact = { 'prettierd' },
+          typescript = { 'prettierd' },
+          typescriptreact = { 'prettierd' },
+          json = { 'prettierd' },
+          yaml = { 'prettierd' },
+          css = { 'prettierd' },
+          html = { 'prettierd' },
+          lua = { 'stylua' },
+        },
+        formatters = {
+          ['clang-format'] = {
+            cwd = root_cwd { '.clang-format', '_clang-format' },
+            require_cwd = true,
+          },
+          prettierd = {
+            cwd = root_cwd { '.prettierrc', '.prettierrc.json', '.prettierrc.yaml', '.prettierrc.yml', 'prettier.config.js', 'prettier.config.mjs' },
+            require_cwd = true,
+          },
+          rustfmt = {
+            cwd = root_cwd { 'rustfmt.toml', '.rustfmt.toml', 'Cargo.toml' },
+          },
+        },
+        format_on_save = function()
+          if vim.g.disable_autoformat then
+            return nil
+          end
+          return { timeout_ms = 1000, lsp_format = 'never' }
+        end,
+      }
+    end,
   },
   {
     'michaelrommel/nvim-silicon',
@@ -721,35 +613,7 @@ require('lazy').setup({
     'saghen/blink.cmp',
     event = 'VimEnter',
     version = '1.*',
-    dependencies = {
-      -- Snippet Engine
-      {
-        'L3MON4D3/LuaSnip',
-        version = '2.*',
-        build = (function()
-          -- Build Step is needed for regex support in snippets.
-          -- This step is not supported in many windows environments.
-          -- Remove the below condition to re-enable on windows.
-          if vim.fn.has 'win32' == 1 or vim.fn.executable 'make' == 0 then
-            return
-          end
-          return 'make install_jsregexp'
-        end)(),
-        dependencies = {
-          -- `friendly-snippets` contains a variety of premade snippets.
-          --    See the README about individual language/framework/plugin snippets:
-          --    https://github.com/rafamadriz/friendly-snippets
-          -- {
-          --   'rafamadriz/friendly-snippets',
-          --   config = function()
-          --     require('luasnip.loaders.from_vscode').lazy_load()
-          --   end,
-          -- },
-        },
-        opts = {},
-      },
-      'folke/lazydev.nvim',
-    },
+    dependencies = { 'folke/lazydev.nvim' },
     --- @module 'blink.cmp'
     --- @type blink.cmp.Config
     opts = {
@@ -778,9 +642,6 @@ require('lazy').setup({
         preset = 'super-tab',
 
         -- ['<enter>'] = { 'select_and_accept' },
-
-        -- For more advanced Luasnip keymaps (e.g. selecting choice nodes, expansion) see:
-        --    https://github.com/L3MON4D3/LuaSnip?tab=readme-ov-file#keymaps
       },
 
       appearance = {
@@ -801,8 +662,6 @@ require('lazy').setup({
           lazydev = { module = 'lazydev.integrations.blink', score_offset = 100 },
         },
       },
-
-      snippets = { preset = 'luasnip' },
 
       -- Blink.cmp includes an optional, recommended rust fuzzy matcher,
       -- which automatically downloads a prebuilt binary when enabled.
@@ -825,7 +684,7 @@ require('lazy').setup({
       require('kanagawa').setup {
         -- Customize options here (see below for examples)
         theme = 'dragon', -- Options: "wave", "dragon", "lotus"
-        background = {    -- Set background for dark/light modes
+        background = { -- Set background for dark/light modes
           dark = 'dragon',
           light = 'lotus',
         },
@@ -892,24 +751,38 @@ require('lazy').setup({
       --  Check out: https://github.com/echasnovski/mini.nvim
     end,
   },
+
   {
-    "nvim-treesitter/nvim-treesitter",
-    branch = "main",
+    'nvim-treesitter/nvim-treesitter',
+    branch = 'main',
     lazy = false,
-    build = ":TSUpdate",
+    build = ':TSUpdate',
     config = function()
-      require("nvim-treesitter").setup()
-
-      -- Prefer git (more reliable in some networks)
-      require("nvim-treesitter.install").prefer_git = true
-
-      -- Install your parsers (this is safe to call every time)
-      local parsers = {
-        "python", "bash", "zig", "cpp", "rust", "javascript", "typescript",
-        "c", "cmake", "diff", "html", "lua", "luadoc", "markdown",
-        "markdown_inline", "query", "vim", "vimdoc", "yaml"
+      require('nvim-treesitter').install {
+        'python',
+        'bash',
+        'zig',
+        'cpp',
+        'rust',
+        'c',
+        'cmake',
+        'diff',
+        'lua',
+        'luadoc',
+        'markdown',
+        'markdown_inline',
+        'query',
+        'vim',
+        'vimdoc',
+        'yaml',
       }
-      require("nvim-treesitter").install(parsers)
+      vim.api.nvim_create_autocmd('FileType', {
+        callback = function(args)
+          if pcall(vim.treesitter.start, args.buf) then
+            vim.bo[args.buf].indentexpr = "v:lua.require'nvim-treesitter'.indentexpr()"
+          end
+        end,
+      })
     end,
   },
   {
@@ -919,25 +792,43 @@ require('lazy').setup({
     end,
   },
   {
-    'theprimeagen/harpoon',
+    'ThePrimeagen/harpoon',
+    branch = 'harpoon2',
+    dependencies = { 'nvim-lua/plenary.nvim' },
     config = function()
-      local mark = require 'harpoon.mark'
-      local ui = require 'harpoon.ui'
+      local harpoon = require 'harpoon'
 
-      vim.keymap.set('n', '<leader>a', mark.add_file)
-      vim.keymap.set('n', '<C-e>', ui.toggle_quick_menu)
+      -- REQUIRED
+      harpoon:setup()
+      -- REQUIRED
+
+      vim.keymap.set('n', '<leader>a', function()
+        harpoon:list():add()
+      end)
+      vim.keymap.set('n', '<C-e>', function()
+        harpoon.ui:toggle_quick_menu(harpoon:list())
+      end)
 
       vim.keymap.set('n', '<C-h>', function()
-        ui.nav_file(1)
+        harpoon:list():select(1)
       end)
       vim.keymap.set('n', '<C-t>', function()
-        ui.nav_file(2)
+        harpoon:list():select(2)
       end)
       vim.keymap.set('n', '<C-n>', function()
-        ui.nav_file(3)
+        harpoon:list():select(3)
       end)
       vim.keymap.set('n', '<C-s>', function()
-        ui.nav_file(4)
+        harpoon:list():select(4)
+      end)
+
+      -- Toggle previous & next buffers stored within Harpoon list
+      -- (most terminals can't tell <C-S-p> from <C-p>, so these may never fire)
+      vim.keymap.set('n', '<C-S-P>', function()
+        harpoon:list():prev()
+      end)
+      vim.keymap.set('n', '<C-S-N>', function()
+        harpoon:list():next()
       end)
     end,
   },
@@ -953,9 +844,9 @@ require('lazy').setup({
     -- Make sure to set this up properly if you have lazy=true
     'MeanderingProgrammer/render-markdown.nvim',
     opts = {
-      file_types = { 'markdown', 'Avante' },
+      file_types = { 'markdown' },
     },
-    ft = { 'markdown', 'Avante' },
+    ft = { 'markdown' },
   },
   -- The following comments only work if you have downloaded the kickstart repo, not just copy pasted the
   -- init.lua. If you want these files, they are in the repository, so you can just download them and
