@@ -692,7 +692,6 @@ require('lazy').setup({
       end,
       formatters_by_ft = {
         lua = { 'stylua' },
-        markdown = { 'prettierd' },
         mdx = { 'prettierd' },
         json = { 'prettierd' },
         css = { 'prettierd' },
